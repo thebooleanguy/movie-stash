@@ -9,14 +9,25 @@ import java.util.Locale;
 
 public class MovieScanner {
 
+	private static final List<String> VIDEO_EXTENSIONS = List.of(".mp4", ".mkv", ".avi", ".mov");
+
 	public List<Path> findVideos(Path path) throws IOException {
 		try (Stream<Path> stream = Files.list(path)) {
 			List<Path> searchResults = stream.filter(p -> Files.isRegularFile(p)
-					&& p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".mkv"))
+					&& checkExtension(p.getFileName().toString().toLowerCase(Locale.ROOT)))
 					.toList();
 
 			return searchResults;
 		}
+	}
+
+	private boolean checkExtension(String filename) {
+		for (String ext : VIDEO_EXTENSIONS) {
+			if (filename.endsWith(ext)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 }
