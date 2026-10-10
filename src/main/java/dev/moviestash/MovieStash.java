@@ -10,16 +10,15 @@ public class MovieStash {
 		try {
 			MovieMetadataClient client = new MovieMetadataClient();
 
-			String json = client.searchMovie("The Matrix", 1999);
+			MovieSearchResponse response = client.searchMovie("The Matrix", 1999);
 
-			System.out.println(json);
+			for (MovieResult movie : response.getResults()) {
+				System.out.println(
+						movie.getTitle() + " — " + movie.getReleaseDate());
+			}
+
 		} catch (IOException | InterruptedException ex) {
 			System.out.println("Movie search failed: " + ex.getMessage());
-		}
-
-		if (args.length == 0) {
-			System.out.println("Enter a path to scan.");
-			return;
 		}
 
 		Path path = Path.of(args[0]);

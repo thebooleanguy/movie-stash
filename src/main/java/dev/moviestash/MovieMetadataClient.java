@@ -7,11 +7,13 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class MovieMetadataClient {
 	private final HttpClient httpClient = HttpClient.newHttpClient();
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
-	public String searchMovie(String title, int year)
+	public MovieSearchResponse searchMovie(String title, int year)
 			throws IOException, InterruptedException {
 
 		String token = System.getenv("TMDB_BEARER_TOKEN");
@@ -44,6 +46,6 @@ public class MovieMetadataClient {
 					"TMDB returned HTTP " + response.statusCode());
 		}
 
-		return response.body();
+		return objectMapper.readValue(response.body(), MovieSearchResponse.class);
 	}
 }
