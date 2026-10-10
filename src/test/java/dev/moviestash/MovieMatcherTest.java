@@ -19,11 +19,12 @@ class MovieMatcherTest {
 		MovieResult movie = new MovieResult();
 		movie.setTitle("The Matrix");
 		movie.setReleaseDate("1999-03-31");
-
-		MovieResult result = matcher.findBestMatch(
+		MovieMatch match = matcher.findBestMatch(
 				candidate, List.of(documentary, movie));
 
-		assertSame(movie, result);
+		assertNotNull(match);
+		assertSame(movie, match.movie());
+		assertEquals(MovieMatch.MatchType.EXACT, match.type());
 	}
 
 	@Test
@@ -34,19 +35,19 @@ class MovieMatcherTest {
 		remake.setTitle("The Matrix");
 		remake.setReleaseDate("2021-01-01");
 
-		MovieResult result = matcher.findBestMatch(
+		MovieMatch match = matcher.findBestMatch(
 				candidate, List.of(remake));
 
-		assertNull(result);
+		assertNull(match);
 	}
 
 	@Test
 	void returnsNullWhenThereAreNoResults() {
 		MovieCandidate candidate = new MovieCandidate("The Matrix", 1999);
 
-		MovieResult result = matcher.findBestMatch(
+		MovieMatch match = matcher.findBestMatch(
 				candidate, List.of());
 
-		assertNull(result);
+		assertNull(match);
 	}
 }

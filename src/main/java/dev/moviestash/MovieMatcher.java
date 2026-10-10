@@ -5,48 +5,48 @@ import java.util.Locale;
 
 public class MovieMatcher {
 
-	public MovieResult findBestMatch(
+	public MovieMatch findBestMatch(
 			MovieCandidate candidate,
 			List<MovieResult> results) {
 		String expectedTitle = normalize(candidate.getTitle());
 
-		// First pass: exact title and year match.
+		// Prefer exact title and year matches.
 		for (MovieResult result : results) {
-			if (result.getReleaseDate() == null
-					|| result.getReleaseDate().isBlank()) {
-				continue;
-			}
-
-			int resultYear = Integer.parseInt(
-					result.getReleaseDate().substring(0, 4));
-
-			if (normalize(result.getTitle()).equals(expectedTitle)
-					&& resultYear == candidate.getYear()) {
-				return result;
+			if (hasMatchingYear(candidate, result)
+					&& result.getTitle() != null
+					&& normalize(result.getTitle()).equals(expectedTitle)) {
+				return new MovieMatch(result, MovieMatch.MatchType.EXACT);
 			}
 		}
 
-		// Second pass: partial title match with the correct year.
+		// Otherwise, find a possible partial match.
 		for (MovieResult result : results) {
-			if (result.getReleaseDate() == null
-					|| result.getReleaseDate().isBlank()
-					|| result.getTitle() == null) {
-				continue;
-			}
+			if (hasMatchingYear(candidate, result)
+					&& result.getTitle() != null) {
 
-			int resultYear = Integer.parseInt(
-					result.getReleaseDate().substring(0, 4));
+				String resultTitle = normalize(result.getTitle());
 
-			String resultTitle = normalize(result.getTitle());
-
-			if (resultYear == candidate.getYear()
-					&& (resultTitle.contains(expectedTitle)
-							|| expectedTitle.contains(resultTitle))) {
-				return result;
+				if (resultTitle.contains(expectedTitle)) {
+					return new MovieMatch(result, MovieMatch.MatchType.PARTIAL);
+				}
 			}
 		}
 
 		return null;
+	}
+
+	private boolean hasMatchingYear(
+			MovieCandidate candidate,
+			MovieResult result) {
+		if (result.getReleaseDate() == null
+				|| !result.getReleaseDate().matches("\\d{4}-\\d{2}-\\d{2}")) {
+			return false;
+		}
+
+		int resultYear = Integer.parseInt(
+				result.getReleaseDate().substring(0, 4));
+
+		return resultYear == candidate.getYear();
 	}
 
 	private String normalize(String title) {

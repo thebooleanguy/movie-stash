@@ -1,44 +1,93 @@
+
 package dev.moviestash;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Scanner;
 
 public class MovieStash {
+
 	public static void main(String[] args) {
 
-		try {
-			MovieMetadataClient client = new MovieMetadataClient();
-
-			MovieSearchResponse response = client.searchMovie("The Matrix", 1999);
-
-			for (MovieResult movie : response.getResults()) {
-				System.out.println(
-						movie.getTitle() + " — " + movie.getReleaseDate());
-			}
-
-		} catch (IOException | InterruptedException ex) {
-			System.out.println("Movie search failed: " + ex.getMessage());
+		if (args.length == 0) {
+			System.out.println("Usage: MovieStash <directory>");
+			return;
 		}
 
 		Path path = Path.of(args[0]);
 
 		MovieScanner scanner = new MovieScanner();
 		MovieFilenameParser parser = new MovieFilenameParser();
+		MovieMetadataClient client = new MovieMetadataClient();
+		MovieMatcher matcher = new MovieMatcher();
 
-		try {
-			List<Path> searchResults = scanner.findVideos(path);
-			for (Path videoPath : searchResults) {
+		try (Scanner input = new Scanner(System.in)) {
+
+			List<Path> videoFiles = scanner.findVideos(path);
+
+			for (Path videoPath : videoFiles) {
+				System.out.println("\nFile: " + videoPath.getFileName());
+
 				MovieCandidate candidate = parser.parse(videoPath);
+
 				if (candidate == null) {
-					System.out.println("Could not identify: " + videoPath.getFileName());
-				} else {
-					System.out.println(candidate.getTitle() + " (" + candidate.getYear() + ")");
+					System.out.println("Could not identify title and year.");
+					continue;
+				}
+
+				System.out.println(
+						"Searching for: " + candidate.getTitle()
+								+ " (" + candidate.getYear() + ")");
+
+				try {
+					MovieSearchResponse response = client.searchMovie(
+							candidate.getTitle(),
+							candidate.getYear());
+
+					MovieMatch match = matcher.findBestMatch(
+							candidate,
+							response.getResults());
+
+					if (match == null) {
+						System.out.println("No suitable match found.");
+						continue;
+					}
+
+					MovieResult movie = match.movie();
+
+					if (match.type() == MovieMatch.MatchType.EXACT) {
+						System.out.println(
+								"Matched: " + movie.getTitle()
+										+ " (" + movie.getReleaseDate() + ")");
+					} else {
+						System.out.println(
+								"Suggested match: " + movie.getTitle()
+										+ " (" + movie.getReleaseDate() + ")");
+
+						System.out.print("Accept this match? (y/n): ");
+						String answer = input.nextLine().trim();
+
+						if (answer.equalsIgnoreCase("y")
+								|| answer.equalsIgnoreCase("yes")) {
+							System.out.println("Match accepted.");
+						} else {
+							System.out.println("Match skipped.");
+						}
+					}
+
+				} catch (IOException ex) {
+					System.out.println(
+							"Movie search failed: " + ex.getMessage());
+				} catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+					System.out.println("Movie search was interrupted.");
+					return;
 				}
 			}
+
 		} catch (IOException ex) {
-			System.out.println("Error reading path: " + ex.getMessage());
-			return;
+			System.out.println("Error reading directory: " + ex.getMessage());
 		}
 	}
 }
