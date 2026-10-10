@@ -8,24 +8,26 @@ import java.util.Scanner;
 public class MovieStash {
 
 	public static void main(String[] args) {
-
 		if (args.length == 0) {
 			System.out.println("Usage: MovieStash <directory>");
 			return;
 		}
 
-		Path path = Path.of(args[0]);
+		Path path = Path.of(args[0]).toAbsolutePath().normalize();
 
 		MovieScanner scanner = new MovieScanner();
 		MovieFilenameParser parser = new MovieFilenameParser();
 		MovieMetadataClient client = new MovieMetadataClient();
 		MovieMatcher matcher = new MovieMatcher();
+		MovieRenamer renamer = new MovieRenamer();
+		PosterDownloader posterDownloader = new PosterDownloader();
 
 		try (Scanner input = new Scanner(System.in)) {
-
 			List<Path> videoFiles = scanner.findVideos(path);
 			MovieCatalog catalog = new MovieCatalog(path);
 			List<MovieRecord> movies = catalog.load();
+
+			boolean interrupted = false;
 
 			for (Path videoPath : videoFiles) {
 				System.out.println("\nFile: " + videoPath.getFileName());
@@ -37,19 +39,20 @@ public class MovieStash {
 					continue;
 				}
 
-				String fileName = videoPath.getFileName().toString();
+				String originalFileName = videoPath.getFileName().toString();
 
 				boolean alreadyCatalogued = movies.stream()
-						.anyMatch(existing -> existing.fileName().equals(fileName));
+						.anyMatch(existing -> existing.fileName().equals(originalFileName));
 
 				if (alreadyCatalogued) {
 					System.out.println("Already in catalog. Skipping TMDB search.");
 					continue;
 				}
 
-				System.out.println(
-						"Searching for: " + candidate.getTitle()
-								+ " (" + candidate.getYear() + ")");
+				System.out.println("Searching for: " + candidate.getTitle()
+						+ " (" + candidate.getYear() + ")");
+
+				MovieResult movie;
 
 				try {
 					MovieSearchResponse response = client.searchMovie(
@@ -65,57 +68,93 @@ public class MovieStash {
 						continue;
 					}
 
-					MovieResult movie = match.movie();
-
-					boolean accepted;
+					movie = match.movie();
 
 					if (match.type() == MovieMatch.MatchType.EXACT) {
-						System.out.println(
-								"Matched: " + movie.getTitle()
-										+ " (" + movie.getReleaseDate() + ")");
-						accepted = true;
+						System.out.println("Matched: " + movie.getTitle()
+								+ " (" + movie.getReleaseDate() + ")");
 					} else {
-						System.out.println(
-								"Suggested match: " + movie.getTitle()
-										+ " (" + movie.getReleaseDate() + ")");
-
+						System.out.println("Suggested match: " + movie.getTitle()
+								+ " (" + movie.getReleaseDate() + ")");
 						System.out.print("Accept this match? (y/n): ");
+
 						String answer = input.nextLine().trim();
 
-						accepted = answer.equalsIgnoreCase("y")
-								|| answer.equalsIgnoreCase("yes");
-
-						if (accepted) {
-							System.out.println("Match accepted.");
-						} else {
+						if (!answer.equalsIgnoreCase("y")
+								&& !answer.equalsIgnoreCase("yes")) {
 							System.out.println("Match skipped.");
+							continue;
 						}
+
+						System.out.println("Match accepted.");
 					}
-
-					if (accepted) {
-						MovieRecord record = new MovieRecord(
-								fileName,
-								movie.getId(),
-								movie.getTitle(),
-								candidate.getYear(),
-								movie.getReleaseDate(),
-								null);
-
-						// Replace an existing entry for this filename.
-						movies.removeIf(existing -> existing.fileName().equals(fileName));
-
-						movies.add(record);
-
-						System.out.println("Added to catalog.");
-					}
-
 				} catch (IOException ex) {
-					System.out.println(
-							"Movie search failed: " + ex.getMessage());
+					System.out.println("Movie search failed: " + ex.getMessage());
+					continue;
 				} catch (InterruptedException ex) {
 					Thread.currentThread().interrupt();
 					System.out.println("Movie search was interrupted.");
-					return;
+					break;
+				}
+
+				// Organize the movie only after a match has been accepted.
+				Path organizedPath;
+
+				try {
+					organizedPath = renamer.organize(
+							videoPath,
+							movie.getTitle(),
+							candidate.getYear());
+
+					System.out.println("Organized movie: " + organizedPath);
+				} catch (IOException ex) {
+					System.out.println("Could not organize movie: "
+							+ ex.getMessage());
+					continue;
+				}
+
+				// A poster failure should not prevent cataloguing the movie.
+				String localPosterPath = null;
+
+				try {
+					Path poster = posterDownloader.download(
+							movie.getPosterPath(),
+							organizedPath.getParent(),
+							"poster.jpg");
+
+					if (poster != null) {
+						localPosterPath = path.relativize(poster).toString();
+						System.out.println("Poster saved: " + poster);
+					} else {
+						System.out.println("No poster is available for this movie.");
+					}
+				} catch (IOException ex) {
+					System.out.println("Poster download failed: "
+							+ ex.getMessage());
+				} catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+					interrupted = true;
+					System.out.println(
+							"Poster download was interrupted; saving movie details.");
+				}
+
+				String catalogFileName = path.relativize(organizedPath).toString();
+
+				MovieRecord record = new MovieRecord(
+						catalogFileName,
+						movie.getId(),
+						movie.getTitle(),
+						candidate.getYear(),
+						movie.getReleaseDate(),
+						localPosterPath);
+
+				movies.removeIf(existing -> existing.fileName().equals(catalogFileName));
+				movies.add(record);
+
+				System.out.println("Added to catalog.");
+
+				if (interrupted) {
+					break;
 				}
 			}
 
@@ -123,7 +162,8 @@ public class MovieStash {
 			System.out.println("Catalog saved: " + movies.size() + " movies.");
 
 		} catch (IOException ex) {
-			System.out.println("Error reading directory: " + ex.getMessage());
+			System.out.println("Error reading directory or saving catalog: "
+					+ ex.getMessage());
 		}
 	}
 }

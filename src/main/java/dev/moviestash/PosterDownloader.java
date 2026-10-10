@@ -12,7 +12,14 @@ public class PosterDownloader {
 
 	private final HttpClient httpClient = HttpClient.newHttpClient();
 
+	// Keep the original method for existing tests and callers.
 	public Path download(String posterPath, Path outputDirectory, int tmdbId)
+			throws IOException, InterruptedException {
+		return download(posterPath, outputDirectory, tmdbId + ".jpg");
+	}
+
+	// Allow the caller to choose the output filename.
+	public Path download(String posterPath, Path outputDirectory, String filename)
 			throws IOException, InterruptedException {
 
 		if (posterPath == null || posterPath.isBlank()) {
@@ -22,7 +29,6 @@ public class PosterDownloader {
 		Files.createDirectories(outputDirectory);
 
 		String imageUrl = "https://image.tmdb.org/t/p/w500" + posterPath;
-		Path outputPath = outputDirectory.resolve(tmdbId + ".jpg");
 
 		HttpRequest request = HttpRequest.newBuilder()
 				.uri(URI.create(imageUrl))
@@ -39,6 +45,7 @@ public class PosterDownloader {
 							+ response.statusCode());
 		}
 
+		Path outputPath = outputDirectory.resolve(filename);
 		Files.write(outputPath, response.body());
 
 		return outputPath;
