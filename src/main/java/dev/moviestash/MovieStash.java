@@ -6,6 +6,17 @@ import java.util.List;
 
 public class MovieStash {
 	public static void main(String[] args) {
+
+		try {
+			MovieMetadataClient client = new MovieMetadataClient();
+
+			String json = client.searchMovie("The Matrix", 1999);
+
+			System.out.println(json);
+		} catch (IOException | InterruptedException ex) {
+			System.out.println("Movie search failed: " + ex.getMessage());
+		}
+
 		if (args.length == 0) {
 			System.out.println("Enter a path to scan.");
 			return;
