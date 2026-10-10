@@ -1,4 +1,3 @@
-
 package dev.moviestash;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -9,6 +8,7 @@ public class MovieResult {
 
 	private int id;
 	private String title;
+	private String posterPath;
 
 	@JsonProperty("release_date")
 	private String releaseDate;
@@ -25,6 +25,10 @@ public class MovieResult {
 		return releaseDate;
 	}
 
+	public String getPosterPath() {
+		return posterPath;
+	}
+
 	public void setId(int id) {
 		this.id = id;
 	}
@@ -36,5 +40,10 @@ public class MovieResult {
 	@JsonProperty("release_date")
 	public void setReleaseDate(String releaseDate) {
 		this.releaseDate = releaseDate;
+	}
+
+	@JsonProperty("poster_path")
+	public void setPosterPath(String posterPath) {
+		this.posterPath = posterPath;
 	}
 }

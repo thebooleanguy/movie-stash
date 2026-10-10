@@ -32,7 +32,8 @@ class MovieCatalogTest {
 				157336,
 				"Interstellar",
 				2014,
-				"2014-11-04");
+				"2014-11-04",
+				null);
 
 		catalog.save(List.of(original));
 

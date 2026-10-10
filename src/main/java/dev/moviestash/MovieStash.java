@@ -98,7 +98,8 @@ public class MovieStash {
 								movie.getId(),
 								movie.getTitle(),
 								candidate.getYear(),
-								movie.getReleaseDate());
+								movie.getReleaseDate(),
+								null);
 
 						// Replace an existing entry for this filename.
 						movies.removeIf(existing -> existing.fileName().equals(fileName));

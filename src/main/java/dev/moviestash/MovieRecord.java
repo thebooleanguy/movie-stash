@@ -5,5 +5,6 @@ public record MovieRecord(
 		int tmdbId,
 		String title,
 		int year,
-		String releaseDate) {
+		String releaseDate,
+		String posterPath) {
 }
