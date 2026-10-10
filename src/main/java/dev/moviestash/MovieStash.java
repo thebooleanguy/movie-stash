@@ -1,4 +1,3 @@
-
 package dev.moviestash;
 
 import java.io.IOException;
@@ -25,6 +24,8 @@ public class MovieStash {
 		try (Scanner input = new Scanner(System.in)) {
 
 			List<Path> videoFiles = scanner.findVideos(path);
+			MovieCatalog catalog = new MovieCatalog(path);
+			List<MovieRecord> movies = catalog.load();
 
 			for (Path videoPath : videoFiles) {
 				System.out.println("\nFile: " + videoPath.getFileName());
@@ -33,6 +34,16 @@ public class MovieStash {
 
 				if (candidate == null) {
 					System.out.println("Could not identify title and year.");
+					continue;
+				}
+
+				String fileName = videoPath.getFileName().toString();
+
+				boolean alreadyCatalogued = movies.stream()
+						.anyMatch(existing -> existing.fileName().equals(fileName));
+
+				if (alreadyCatalogued) {
+					System.out.println("Already in catalog. Skipping TMDB search.");
 					continue;
 				}
 
@@ -56,10 +67,13 @@ public class MovieStash {
 
 					MovieResult movie = match.movie();
 
+					boolean accepted;
+
 					if (match.type() == MovieMatch.MatchType.EXACT) {
 						System.out.println(
 								"Matched: " + movie.getTitle()
 										+ " (" + movie.getReleaseDate() + ")");
+						accepted = true;
 					} else {
 						System.out.println(
 								"Suggested match: " + movie.getTitle()
@@ -68,12 +82,30 @@ public class MovieStash {
 						System.out.print("Accept this match? (y/n): ");
 						String answer = input.nextLine().trim();
 
-						if (answer.equalsIgnoreCase("y")
-								|| answer.equalsIgnoreCase("yes")) {
+						accepted = answer.equalsIgnoreCase("y")
+								|| answer.equalsIgnoreCase("yes");
+
+						if (accepted) {
 							System.out.println("Match accepted.");
 						} else {
 							System.out.println("Match skipped.");
 						}
+					}
+
+					if (accepted) {
+						MovieRecord record = new MovieRecord(
+								fileName,
+								movie.getId(),
+								movie.getTitle(),
+								candidate.getYear(),
+								movie.getReleaseDate());
+
+						// Replace an existing entry for this filename.
+						movies.removeIf(existing -> existing.fileName().equals(fileName));
+
+						movies.add(record);
+
+						System.out.println("Added to catalog.");
 					}
 
 				} catch (IOException ex) {
@@ -85,6 +117,9 @@ public class MovieStash {
 					return;
 				}
 			}
+
+			catalog.save(movies);
+			System.out.println("Catalog saved: " + movies.size() + " movies.");
 
 		} catch (IOException ex) {
 			System.out.println("Error reading directory: " + ex.getMessage());
