@@ -2,17 +2,18 @@
 
 **A Java CLI tool for organizing your local movie collection with metadata from TMDB.**
 
-Movie Stash scans a directory of movie files, identifies titles and release years from filenames, finds matching movie metadata, and organizes accepted matches into individual folders with standardized filenames and movie posters.
+Movie Stash scans a directory of movie files, identifies titles and release years from filenames, finds matching metadata using The Movie Database (TMDB), and organizes accepted matches into individual folders with standardized filenames, posters, and matching subtitles.
 
 ## Features
 
 - **Movie scanning** — discovers supported video files in a directory.
 - **Filename parsing** — extracts movie titles and release years from filenames.
 - **TMDB integration** — searches The Movie Database for movie metadata.
-- **Movie matching** — compares parsed filenames with search results.
+- **Movie matching** — compares parsed filenames against search results.
 - **Match confirmation** — asks for confirmation when a suggested match is uncertain.
 - **Folder organization** — creates a folder for each movie and renames the video file consistently.
 - **Poster downloads** — downloads available movie posters as `poster.jpg`.
+- **Subtitle organization** — moves matching `.srt` subtitle files into their corresponding movie folders.
 - **JSON catalog** — stores movie metadata and local file paths for future use.
 
 ## Example
@@ -22,6 +23,7 @@ Before:
 ```text
 Movies/
 ├── The.Matrix.1999.1080p.mkv
+├── The.Matrix.1999.1080p.srt
 └── Interstellar.2014.mp4
 ```
 
@@ -31,6 +33,7 @@ After organization:
 Movies/
 ├── The Matrix (1999)/
 │   ├── The Matrix (1999).mkv
+│   ├── The Matrix (1999).srt
 │   └── poster.jpg
 ├── Interstellar (2014)/
 │   ├── Interstellar (2014).mp4
@@ -38,7 +41,7 @@ Movies/
 └── movie-stash-catalog.json
 ```
 
-Posters are downloaded when TMDB provides a poster and the download succeeds.
+Posters are downloaded when artwork is available and the download succeeds. Matching subtitles are moved when a unique movie match can be identified.
 
 ## Requirements
 
@@ -94,12 +97,15 @@ If the Exec Plugin is not configured, run `dev.moviestash.MovieStash` from your 
 ## How it works
 
 1. Scans the specified directory for supported video files.
-2. Parses each filename to extract a title and year.
+2. Parses filenames to extract movie titles and release years.
 3. Searches TMDB for matching metadata.
 4. Accepts exact matches and asks the user to confirm uncertain suggestions.
-5. Creates a movie folder and moves and renames the video.
+5. Creates a movie folder and moves and renames the video file.
 6. Downloads the movie poster when available.
-7. Saves the movie metadata and local paths to a JSON catalog.
+7. Finds matching `.srt` subtitle files and moves them into the appropriate movie folders.
+8. Saves movie metadata and local paths in a JSON catalog.
+
+Subtitle files can also be organized on subsequent runs when their corresponding movies are already recorded in the catalog.
 
 ## Supported video formats
 
@@ -111,6 +117,12 @@ The scanner currently recognizes:
 - `.mov`
 
 File extensions are matched without regard to case.
+
+## Supported subtitles
+
+- `.srt`
+
+Subtitle matching uses the parsed movie title and release year. Ambiguous or unmatched subtitles are left in place rather than assigned to a potentially incorrect movie.
 
 ## Project structure
 
@@ -126,7 +138,8 @@ src/
 │   ├── MovieRecord.java
 │   ├── MovieCatalog.java
 │   ├── MovieRenamer.java
-│   └── PosterDownloader.java
+│   ├── PosterDownloader.java
+│   └── SubtitleOrganizer.java
 └── test/java/dev/moviestash/
 ```
 
@@ -135,15 +148,18 @@ src/
 - **Back up your files first.** Movie Stash moves and renames movie files.
 - Test on a small directory or copies of your files before processing your main collection.
 - Existing destination folders are not overwritten by the organizer.
+- Existing subtitle files are not overwritten by the subtitle organizer.
 - Poster downloads may fail because of network issues or unavailable artwork.
 - Movie matching depends on the filename and the metadata returned by TMDB.
+- Keep your API credentials out of source control.
 
 ## Roadmap
 
-- Move matching `.srt` subtitle files alongside their movies.
 - Improve recovery from failed poster downloads.
 - Improve handling of ambiguous or missing metadata.
 - Add more robust end-to-end tests.
+- Support additional subtitle formats, such as `.ass` and `.ssa`.
+- Improve filename parsing for unusual releases and alternate editions.
 
 ## Tech stack
 
