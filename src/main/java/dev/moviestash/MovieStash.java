@@ -21,6 +21,7 @@ public class MovieStash {
 		MovieMatcher matcher = new MovieMatcher();
 		MovieRenamer renamer = new MovieRenamer();
 		PosterDownloader posterDownloader = new PosterDownloader();
+		SubtitleOrganizer subtitleOrganizer = new SubtitleOrganizer();
 
 		try (Scanner input = new Scanner(System.in)) {
 			List<Path> videoFiles = scanner.findVideos(path);
@@ -156,6 +157,13 @@ public class MovieStash {
 				if (interrupted) {
 					break;
 				}
+			}
+
+			try {
+				int movedSubtitles = subtitleOrganizer.organize(path, movies);
+				System.out.println("Moved " + movedSubtitles + " subtitle(s).");
+			} catch (IOException ex) {
+				System.out.println("Subtitle organization failed: " + ex.getMessage());
 			}
 
 			catalog.save(movies);
